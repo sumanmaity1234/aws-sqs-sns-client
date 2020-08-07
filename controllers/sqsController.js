@@ -1,7 +1,5 @@
-// AWS test SQS controller / API 
+// AWS test SQS controller / API
 module.exports = function (aws, app,ui) {
-
-  
 
     // setup bodyparser
     var bodyParser = require('body-parser');
@@ -13,13 +11,13 @@ module.exports = function (aws, app,ui) {
 
     // create the sqs service object
     var sqs = new aws.SQS()
-    
-   
-    // 1. create Queue 
+
+
+    // 1. create Queue
     app.post('/sqs-queue', function (req, res) {
 
         ui.menuitem = 1
-    
+
         var qParams = {
             QueueName: req.body.queuename
         }
@@ -46,13 +44,13 @@ module.exports = function (aws, app,ui) {
     app.get('/sqs-queue/list', function (req, res){
 
         ui.menuitem = 2
-    
+
         sqs.listQueues(function(err, data) {
             if (err) {
                 res.status(500)
                 ui.data[ui.menuitem] = '(500) List Queue Error:\n\n' + JSON.stringify(err, null, 3)
             } else {
-                if (data.QueueUrls) {        
+                if (data.QueueUrls) {
                     res.status(200)
                     ui.data[ui.menuitem] ='(200) Success:\n\n' + JSON.stringify(data, null, 3)
                 } else { // no queues
@@ -114,15 +112,15 @@ module.exports = function (aws, app,ui) {
                 ui.data[ui.menuitem] = '(200) Success:\n\n' + JSON.stringify(data, null, 3)
 
                      // default prepop
-                     ui.def_sqsurl = req.query.queueurl  
-                     ui.def_sqsarn = data.Attributes.QueueArn 
+                     ui.def_sqsurl = req.query.queueurl
+                     ui.def_sqsarn = data.Attributes.QueueArn
             }
             res.render('./index', {ui: ui})
         })
     })
 
-    
-    
+
+
     // 5. post message to queue. input = queue URL and message
     app.post ('/sqs-queue/message', function (req, res) {
 
@@ -131,21 +129,21 @@ module.exports = function (aws, app,ui) {
         var qParams = {
             MessageBody: req.body.message,
             QueueUrl: req.body.queueurl
-            }   
+            }
 
         sqs.sendMessage(qParams, function(err, data) {
             if (err) {
                 res.status(500)
                 ui.data[ui.menuitem] = '(500) Post Message to Queue Error:\n\n' + JSON.stringify(err, null, 3)
-            } else { 
+            } else {
                 res.status(201)
                 ui.data[ui.menuitem] =  '(201) Success:\n\n' + JSON.stringify(data, null, 3)
 
                 // default prepop
-                ui.def_sqsurl = req.body.queueurl 
+                ui.def_sqsurl = req.body.queueurl
             }
             res.render('./index', {ui: ui})
-        }) 
+        })
     })
 
 
@@ -158,7 +156,7 @@ module.exports = function (aws, app,ui) {
             QueueUrl: req.query.queueurl,
             VisibilityTimeout: 60 // 1 min wait time for anyone else to process / lock
         };
-        
+
         sqs.receiveMessage(params, function(err, data) {
             if (err) {
                 res.status(500)
@@ -166,15 +164,16 @@ module.exports = function (aws, app,ui) {
             } else {
                 if (data.Messages) { // there is a msg
                     res.status(200)
-                    ui.data[ui.menuitem] = '(200) Success:\n\n' + JSON.stringify(data, null, 3)
+                    const messages = data.Messages.map(message => JSON.parse(message.Body).Message)
+                    ui.data[ui.menuitem] = '(200) Success:\n\n' + JSON.stringify(messages, null, 3)
 
                     // default prepop
-                    ui.def_sqsurl = req.query.queueurl   
+                    ui.def_sqsurl = req.query.queueurl
                     ui.def_msghandle = data.Messages[0].ReceiptHandle
 
                 } else { // no messages
                     res.status(404)
-                    ui.data[ui.menuitem] = '(404) Not Found, No Messages in Queue:\n\n' 
+                    ui.data[ui.menuitem] = '(404) Not Found, No Messages in Queue:\n\n'
                 }
             }
             res.render('./index', {ui: ui})
@@ -191,7 +190,7 @@ module.exports = function (aws, app,ui) {
             QueueUrl: req.body.queueurl,
             ReceiptHandle: req.body.messagehandle
         };
-        
+
         sqs.deleteMessage(params, function(err, data) {
             if (err) {
                 res.status(500)
@@ -201,8 +200,8 @@ module.exports = function (aws, app,ui) {
                 ui.data[ui.menuitem] = '(200) Success:\n\n' + JSON.stringify(data, null, 3)
 
                 // default prepop
-                ui.def_sqsurl = req.body.queueurl   
-            
+                ui.def_sqsurl = req.body.queueurl
+
             }
             res.render('./index', {ui: ui})
         });
@@ -217,7 +216,7 @@ module.exports = function (aws, app,ui) {
         var params = {
             QueueUrl: req.body.queueurl
         }
-        
+
         sqs.purgeQueue(params, function(err, data) {
             if (err) {
                 res.status(500)
@@ -227,24 +226,24 @@ module.exports = function (aws, app,ui) {
                 ui.data[ui.menuitem] = '(200) Success:\n\n' + JSON.stringify(data, null, 3)
 
                 // default prepop
-                ui.def_sqsurl = req.body.queueurl   
+                ui.def_sqsurl = req.body.queueurl
             }
-            res.render('./index', {ui: ui}) 
+            res.render('./index', {ui: ui})
         })
     })
 
 
     // 9. delete queue - dangerzone
     app.post('/sqs-queue/delete', function (req, res) {
-       
+
         ui.menuitem = 9
-        
+
             var params = {
                 QueueUrl: req.body.queueurl
             }
-            
+
             sqs.deleteQueue(params, function(err, data) {
-                if (err) { 
+                if (err) {
                     res.status(500)
                     ui.data[ui.menuitem] = '(500) Delete Queue Error:\n\n' + JSON.stringify(err, null, 3)
                 } else {
@@ -252,9 +251,9 @@ module.exports = function (aws, app,ui) {
                     ui.data[ui.menuitem] = '(200) Success:\n\n' + JSON.stringify(data, null, 3)
 
                     // default prepop
-                    ui.def_sqsurl = req.body.queueurl   
+                    ui.def_sqsurl = req.body.queueurl
                 }
-            res.render('./index', {ui: ui}) 
+            res.render('./index', {ui: ui})
         })
     })
 
@@ -264,7 +263,7 @@ module.exports = function (aws, app,ui) {
 
         ui.menuitem = 10
 
-        var queuePolicyString = JSON.stringify ({   
+        var queuePolicyString = JSON.stringify ({
                 "Version": "2012-10-17",
                 "Id": req.body.sqsarn + "SQSDefaultPolicy",
                 "Statement": [
@@ -282,14 +281,14 @@ module.exports = function (aws, app,ui) {
                 }
                 ]
             })
-            
+
         var sqsParams = {
             QueueUrl: req.body.sqsurl,
-            Attributes: { 
+            Attributes: {
                 Policy : queuePolicyString
             }
         }
-    
+
         sqs.setQueueAttributes(sqsParams, function (err,data) {  // needs queue URL as the parameter
             if (err) {
                 res.status(500)
@@ -299,8 +298,8 @@ module.exports = function (aws, app,ui) {
                 ui.data[ui.menuitem] = '(200) Success:\n\n' + JSON.stringify(data, null, 3)
 
                 // default prepop
-                ui.def_sqsarn = req.body.sqsarn  
-                ui.def_snsarn = req.body.snsarn  
+                ui.def_sqsarn = req.body.sqsarn
+                ui.def_snsarn = req.body.snsarn
 
             }
             res.render('./index', {ui: ui})
